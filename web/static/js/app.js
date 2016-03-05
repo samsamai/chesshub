@@ -59,7 +59,7 @@ class App {
 
   channel.on("make_move", payload => {
     messagesContainer.append(`<br/>from: ${payload.from} to: ${payload.to}`)
-    // this.chess.move( {from: "d2", to: "d4"} );
+    this.chess.move( {from: payload.from, to: payload.to} );
     this.board.move( `${payload.from}-${payload.to}` );
   })
 
@@ -82,9 +82,9 @@ class App {
     onDragStart: (source, piece, position, orientation) => {
     /*make sure the player is allowed to pick up the piece*/
     console.log( "DragStart" );
-      return !(this.chess.game_over() ||
-               (this.chess.turn() == "w" && piece.search(/^b/) != -1) ||
-               (this.chess.turn() == "b" && piece.search(/^w/) != -1) ||
+      return !(App.chess.game_over() ||
+               (App.chess.turn() == "w" && piece.search(/^b/) != -1) ||
+               (App.chess.turn() == "b" && piece.search(/^w/) != -1) ||
                (orientation == "white" && piece.search(/^b/) != -1) ||
                (orientation == "black" && piece.search(/^w/) != -1))
     },
@@ -94,7 +94,7 @@ class App {
       console.log( `from: ${source}` );
       console.log( `to: ${target}` );
 
-      let move = this.chess.move( {from: source, to: target, promotion: "q"} );
+      let move = App.chess.move( {from: source, to: target, promotion: "q"} );
 
       if (move == null) {
          // illegal move 
