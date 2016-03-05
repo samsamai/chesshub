@@ -56,6 +56,24 @@ defmodule HelloPhoenix.GameChannelTest do
     assert_broadcast "start", %{"color" => "black", "uuid" => "9876"}
   end
 
+  test "start game should remove the seek from redis", %{socket: socket} do
+    {:ok, redis_client} = Exredis.start_link
+    redis_client |> Exredis.query(["DEL", "seeks"])
+    redis_client |> Exredis.query(["SADD", "5555"])
+
+    socket("socket_id2", %{})
+      |> subscribe_and_join(GameChannel, "games:lobby", %{ uuid: "5555" })
+    
+    [ player_1 | _ ] = redis_client |> Exredis.query(["SMEMBERS", "seeks"])
+    assert "5555" == player_1
+
+    socket("socket_id2", %{})
+      |> subscribe_and_join(GameChannel, "games:lobby", %{ uuid: "7777" })
+
+
+    assert (redis_client |> Exredis.query(["EXISTS", "seeks"])) == "0"
+  end
+
   # # test "shout broadcasts to test:lobby", %{socket: socket} do
   #   push socket, "shout", %{"hello" => "all"}
   #   assert_broadcast "shout", %{"hello" => "all"}
