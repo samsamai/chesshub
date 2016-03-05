@@ -21,7 +21,10 @@ defmodule HelloPhoenix.UserSocket do
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
   def connect(_params, socket) do
-    {:ok, socket}
+    # {:ok, socket}
+    uuid = UUID.uuid4()
+    IO.puts "connect, uuid=#{uuid}"
+    {:ok, assign(socket, :uuid, uuid)}
   end
 
   # Socket id's are topics that allow you to identify all sockets for a given user:

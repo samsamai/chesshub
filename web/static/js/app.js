@@ -49,10 +49,9 @@ class App {
  static init() {
   console.log( "init" );
   let messagesContainer = $( '#messages' );
+  let uuid = Math.floor(Math.random() * (1024));
 
-  this.uuid = Math.floor(Math.random() * (1024));
-
-  let channel = socket.channel("games:lobby", {uuid: this.uuid})
+  let channel = socket.channel("games:lobby", {} )
   channel.join()
   .receive("ok", resp => { console.log("Joined successfully", resp) })
   .receive("error", resp => { console.log("Unable to join", resp) })
@@ -68,14 +67,10 @@ class App {
     console.log( "uuid: " + payload["uuid"] );
     console.log( "color: " + payload["color"] );
 
-    if ( this.uuid == payload["uuid"] ) {
-      this.chess = Chess();
-      this.board = ChessBoard("chessboard", this.cfg);
-      this.board.orientation( payload["color"] );
-      this.board.position( "start" );
-
-
-    }
+    this.chess = Chess();
+    this.board = ChessBoard("chessboard", this.cfg);
+    this.board.orientation( payload["color"] );
+    this.board.position( "start" );
   })
 
 
@@ -87,12 +82,11 @@ class App {
     onDragStart: (source, piece, position, orientation) => {
     /*make sure the player is allowed to pick up the piece*/
     console.log( "DragStart" );
-      // return !(this.chess.game_over() ||
-      //          (this.chess.turn() == "w" && piece.search(/^b/) != -1) ||
-      //          (this.chess.turn() == "b" && piece.search(/^w/) != -1) ||
-      //          (orientation == "white" && piece.search(/^b/) != -1) ||
-      //          (orientation == "black" && piece.search(/^w/) != -1))
-      return true;
+      return !(this.chess.game_over() ||
+               (this.chess.turn() == "w" && piece.search(/^b/) != -1) ||
+               (this.chess.turn() == "b" && piece.search(/^w/) != -1) ||
+               (orientation == "white" && piece.search(/^b/) != -1) ||
+               (orientation == "black" && piece.search(/^w/) != -1))
     },
 
     onDrop: (source, target) => {
