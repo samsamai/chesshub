@@ -54,7 +54,7 @@ defmodule HelloPhoenix.GameChannelTest do
     assert_broadcast "start", %{ color: "black", uuid: "socket_id_2" }
   end
 
-  test "start_game should push to each socket", %{socket: socket} do
+  test "start_game should push to each socket", %{socket: _socket} do
     {:ok, redis_client} = Exredis.start_link
     [ player_1 | _ ] = redis_client |> Exredis.query(["SMEMBERS", "seeks"])
     assert "socket_id_1" == player_1
@@ -72,8 +72,7 @@ defmodule HelloPhoenix.GameChannelTest do
     assert_push "start", %{ color: "black", uuid: "socket_id_2"}
   end
 
-
-  test "start game should remove the seek from redis", %{socket: socket} do
+  test "start game should remove the seek from redis", %{socket: _socket} do
     {:ok, redis_client} = Exredis.start_link
     redis_client |> Exredis.query(["DEL", "seeks"])
 
@@ -86,17 +85,72 @@ defmodule HelloPhoenix.GameChannelTest do
     socket("socket_id_2", %{uuid: "socket_id_2"})
       |> subscribe_and_join(GameChannel, "games:lobby", %{})
 
-
     assert (redis_client |> Exredis.query(["EXISTS", "seeks"])) == "0"
   end
 
-  # # test "shout broadcasts to test:lobby", %{socket: socket} do
-  #   push socket, "shout", %{"hello" => "all"}
-  #   assert_broadcast "shout", %{"hello" => "all"}
-  # end
+  test "start game should record opponents for each player in redis", %{socket: _socket} do
+    {:ok, redis_client} = Exredis.start_link
+    redis_client |> Exredis.query(["DEL", "seeks"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_1"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_2"])
 
-  # test "broadcasts are pushed to the client", %{socket: socket} do
-  #   broadcast_from! socket, "broadcast", %{"some" => "data"}
-  #   assert_push "broadcast", %{"some" => "data"}
-  # end
+    socket("socket_id_1", %{ uuid: "socket_id_1"})
+      |> subscribe_and_join(GameChannel, "games:lobby", %{})
+    
+    socket("socket_id_2", %{ uuid: "socket_id_2"})
+      |> subscribe_and_join(GameChannel, "games:lobby", %{})
+
+    opponent_for_socket_id_1 = redis_client |> Exredis.query(["GET", "opponent_for_socket_id_1"])
+    opponent_for_socket_id_2 = redis_client |> Exredis.query(["GET", "opponent_for_socket_id_2"])
+
+    assert opponent_for_socket_id_2 == "socket_id_1"
+    assert opponent_for_socket_id_1 == "socket_id_2"
+  end
+
+  test "opponent redis records should be removed if either player terminates", %{socket: _socket} do
+    # Setup a 2 player game
+    {:ok, redis_client} = Exredis.start_link
+    redis_client |> Exredis.query(["DEL", "seeks"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_1"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_2"])
+
+    socket("socket_id_1", %{ uuid: "socket_id_1"})
+      |> subscribe_and_join(GameChannel, "games:lobby", %{})
+    
+    {:ok, _, socket2} =
+      socket("socket_id_2", %{ uuid: "socket_id_2"})
+        |> subscribe_and_join(GameChannel, "games:lobby", %{})
+
+    # Player 2 quits
+    Process.unlink( socket2.channel_pid )
+    :ok = close( socket2 )
+
+    opponent_for_socket_id_1 = redis_client |> Exredis.query(["GET", "opponent_for_socket_id_1"])
+    opponent_for_socket_id_2 = redis_client |> Exredis.query(["GET", "opponent_for_socket_id_2"])
+
+    assert opponent_for_socket_id_2 == :undefined
+    assert opponent_for_socket_id_1 == :undefined
+  end
+
+  test "when a player terminates their opponent should get a You Win message" , %{socket: _socket} do
+    # Setup a 2 player game
+    {:ok, redis_client} = Exredis.start_link
+    redis_client |> Exredis.query(["DEL", "seeks"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_1"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_2"])
+
+    socket("socket_id_1", %{ uuid: "socket_id_1"})
+      |> subscribe_and_join(GameChannel, "games:lobby", %{})
+    
+    {:ok, _, socket2} =
+      socket("socket_id_2", %{ uuid: "socket_id_2"})
+        |> subscribe_and_join(GameChannel, "games:lobby", %{})
+
+    # Player 2 quits
+    Process.unlink( socket2.channel_pid )
+    :ok = close( socket2 )
+
+    assert_push "message", %{ text: "Opponent terminated, you win!", uuid: "socket_id_1"}
+  end
+
 end

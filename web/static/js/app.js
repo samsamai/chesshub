@@ -53,7 +53,9 @@ class App {
 
   let channel = socket.channel("games:lobby", {} )
   channel.join()
-  .receive("ok", resp => { console.log("Joined successfully", resp) })
+  .receive("ok", resp => { 
+    messagesContainer.html(`<br/>Seeking a game...`);
+    console.log("Joined successfully", resp); })
   .receive("error", resp => { console.log("Unable to join", resp) })
 
 
@@ -64,6 +66,8 @@ class App {
   })
 
   channel.on("start", payload => {
+    messagesContainer.html(``);
+
     console.log( "uuid: " + payload["uuid"] );
     console.log( "color: " + payload["color"] );
 
@@ -73,6 +77,9 @@ class App {
     this.board.position( "start" );
   })
 
+  channel.on( "message", payload => {
+    messagesContainer.append(`<br/>Message: ${payload.text}`)
+  })
 
   this.cfg = {
     draggable: true,
