@@ -66,11 +66,19 @@ defmodule HelloPhoenix.GameChannel do
     {:ok, redis_client} = Exredis.start_link    
     other_player = redis_client |> Exredis.query(["GET", "opponent_for_#{uuid}" ])
     
-    # Removes the redis opponent records when game is forfeit
-    redis_client |> Exredis.query(["DEL", "opponent_for_#{uuid}" ])
-    redis_client |> Exredis.query(["DEL", "opponent_for_#{other_player}" ])
+    if other_player == :undefined do
+      # Remove the seek for this player
+      [ player_1 | _ ] = redis_client |> Exredis.query(["SMEMBERS", "seeks" ])
+      if player_1 == uuid do
+        redis_client |> Exredis.query(["DEL", "seeks" ])
+      end
+    else
+      # Removes the redis opponent records when game is forfeit
+      redis_client |> Exredis.query(["DEL", "opponent_for_#{uuid}" ])
+      redis_client |> Exredis.query(["DEL", "opponent_for_#{other_player}" ])
 
-    broadcast! socket, "message", %{text: "Opponent terminated, you win!", uuid: other_player }
+      broadcast! socket, "message", %{text: "Opponent terminated, you win!", uuid: other_player }
+    end
     :ok
   end
 

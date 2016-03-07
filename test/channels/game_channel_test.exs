@@ -6,6 +6,9 @@ defmodule HelloPhoenix.GameChannelTest do
   setup do
     {:ok, redis_client} = Exredis.start_link
     redis_client |> Exredis.query(["DEL", "seeks"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_1"])
+    redis_client |> Exredis.query(["DEL", "opponent_for_socket_id_2"])
+
 
     {:ok, _, socket} =
       socket("socket_id_1", %{ uuid: "socket_id_1" })
@@ -153,4 +156,12 @@ defmodule HelloPhoenix.GameChannelTest do
     assert_push "message", %{ text: "Opponent terminated, you win!", uuid: "socket_id_1"}
   end
 
+  test "terminating when in seek mode removes the seek for that player", %{socket: socket} do
+    {:ok, redis_client} = Exredis.start_link
+
+    Process.unlink( socket.channel_pid )
+    :ok = close( socket )
+
+    assert (redis_client |> Exredis.query(["EXISTS", "seeks"])) == "0"
+  end
 end
